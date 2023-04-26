@@ -20,29 +20,63 @@
 /* defined the led4 pin: pd15 */
 #define LED4_PIN    GET_PIN(D, 15)
 
-int main(void)
-{
-    rt_uint32_t speed = 200;
-    /* set led2 pin mode to output */
-    rt_pin_mode(LED2_PIN, PIN_MODE_OUTPUT);
-    /* set led3 pin mode to output */
-    rt_pin_mode(LED3_PIN, PIN_MODE_OUTPUT);
-    /* set led4 pin mode to output */
-    rt_pin_mode(LED4_PIN, PIN_MODE_OUTPUT);
 
-    while (1)
-    {
-        rt_pin_write(LED2_PIN, PIN_LOW);
-        rt_thread_mdelay(speed);
-        rt_pin_write(LED3_PIN, PIN_LOW);
-        rt_thread_mdelay(speed);
-        rt_pin_write(LED4_PIN, PIN_LOW);
-        rt_thread_mdelay(speed);
-        rt_pin_write(LED2_PIN, PIN_HIGH);
-        rt_thread_mdelay(speed);
-        rt_pin_write(LED3_PIN, PIN_HIGH);
-        rt_thread_mdelay(speed);
-        rt_pin_write(LED4_PIN, PIN_HIGH);
-        rt_thread_mdelay(speed);
+static void HookDebug(struct rt_thread *from, struct rt_thread *to)
+{
+    //rt_kprintf("from thread:%s, to thread:%s\r\n", from->name, to->name);
+}
+
+rt_sem_t semtest;
+static void TestSem1(void* pInfo)
+{
+    while(1) {
+        rt_sem_take(semtest, RT_WAITING_FOREVER);
+        //rt_kprintf("%f\r\n",0.02f);
+        rt_kprintf("get sem ok\r\n");
+        //Delay_ms(5000);
+        rt_thread_mdelay(20);
     }
 }
+
+static void TestSem2(void* pInfo)
+{
+    while(1) {
+        rt_sem_take(semtest, RT_WAITING_FOREVER);
+        //rt_kprintf("%f\r\n",0.02f);
+        rt_kprintf("get sem ok\r\n");
+        //Delay_ms(5000);
+        rt_thread_mdelay(20);
+    }
+}
+
+static void ReleaseSemTask(void* pInfo)
+{
+    while(1) {
+        // rt_kprintf("%f\r\n",0.02f);
+        //Delay_ms(5000);
+        rt_thread_mdelay(2000);
+        rt_sem_release(semtest);
+    }
+}
+
+int main(void)
+{
+    semtest = rt_sem_create("semtest", 0, 1);
+
+    rt_scheduler_sethook(HookDebug);
+    rt_thread_t testThread = rt_thread_create("test", TestSem1, NULL, 256, 0, 100);
+    rt_thread_startup(testThread);
+
+    testThread = rt_thread_create("testsem", TestSem2, NULL, 256, 0, 100);
+    rt_thread_startup(testThread);
+
+    testThread = rt_thread_create("testsem", ReleaseSemTask, NULL, 256, 0, 100);
+    rt_thread_startup(testThread);
+    
+    while (1)
+    {
+        
+        rt_thread_mdelay(5);
+    }
+}
+
